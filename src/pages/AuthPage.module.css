@@ -1,0 +1,29 @@
+.authCard {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 28px;
+}
+
+.title {
+  font-size: 22px;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.hint {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+.foot {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--color-muted);
+}

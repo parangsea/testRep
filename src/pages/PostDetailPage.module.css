@@ -1,0 +1,40 @@
+.detail {
+  padding: 24px 28px;
+}
+
+.title {
+  font-size: 24px;
+  margin: 0 0 12px;
+  word-break: break-word;
+}
+
+.meta {
+  display: flex;
+  gap: 14px;
+  color: var(--color-muted);
+  font-size: 13px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.content {
+  padding: 24px 0;
+  min-height: 160px;
+  line-height: 1.7;
+  font-size: 15px;
+  word-break: break-word;
+}
+.content :global(p) {
+  margin: 0 0 12px;
+}
+.content :global(img) {
+  max-width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}

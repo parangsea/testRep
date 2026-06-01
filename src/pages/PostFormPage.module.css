@@ -1,0 +1,15 @@
+.formCard {
+  padding: 24px 28px;
+}
+
+.title {
+  font-size: 22px;
+  margin: 0 0 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
