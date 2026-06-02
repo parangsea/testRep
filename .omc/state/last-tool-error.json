@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd \\\"C:\\\\Users\\\\kallo\\\\project\\\\testRp\\\" && file README.md 2>/dev/null; echo \\\"---\\\"; powershell -NoProfile -Command \\\"(Get-Content README.md -Raw).Length; '===HEADINGS==='; Select-String ...",
-  "error": "Exit code 1\nREADME.md: data\n---\n��ġ ��:1 ����:121\r\n+ ... ct-String -Path README.md -Pattern '^#' | ForEach-Object { ---.Line }\r\n+                                                                  ~\r\n���� ������ '--' �ڿ� ���� �����ϴ�.\r\n��ġ ��:1 ����:121\r\n+ ... ct-String -Path README.md -Pattern '^#' | ForEach-Object { ---.Line }\r\n+                                                                  ~~~~~~\r\n�� �Ǵ� ������ ����ġ ���� '-.Line' ��ū�Դϴ�.\r\n    + CategoryInfo          : ParserError: (:) [], ...",
-  "timestamp": "2026-06-01T23:42:49.099Z",
-  "retry_count": 1
-}

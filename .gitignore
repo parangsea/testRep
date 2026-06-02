@@ -21,8 +21,12 @@ playwright-report
 test-results
 .nyc_output
 
-# Harness tooling runtime artifacts (traces are reproducible, not committed)
+# Harness tooling runtime artifacts (reproducible, not committed)
 harness/.traces
+harness/.reviews
+
+# OMC (oh-my-claudecode) tool-local session state — auto-generated, not for VCS
+.omc/
 
 # Env (local overrides only — committed defaults: .env, .env.example)
 .env.local
