@@ -5,8 +5,9 @@
 // "고치는" 가장 쉬운 길이 재베이스라인이며, 이때 src/채점로직 변경과 baseline 변경이 같은
 // 변경 묶음에 섞이면 회귀가 새 정상값으로 세탁된다.
 //
-// 이 가드는 base ref 대비 변경 파일을 보고, baseline.json 이 (a) 앱 소스(src/) 또는
-// (b) 채점/측정 로직(probes·scorers·tasks)과 "함께" 수정되면 실패시킨다.
+// 이 가드는 base ref 대비 변경 파일을 보고, baseline.json 이 (a) 앱 소스(src/),
+// (b) 채점/측정 로직(probes·scorers·tasks), 또는 (c) 게이트 실행 경로
+// (package.json·CI workflow·.githooks·runner·guard 자체)와 "함께" 수정되면 실패시킨다.
 // → baseline 갱신은 별도 커밋 + 사람 검토를 강제한다.
 //
 // 사용:
@@ -67,7 +68,11 @@ function resolveBaseRef(arg) {
 }
 
 const BASELINE = 'harness/eval/baseline.json'
-const RISKY_RE = /^(src\/|harness\/eval\/(probes|scorers)\.mjs$|harness\/eval\/tasks\/)/
+// "위험" = baseline 과 함께 바뀌면 회귀 세탁이 되는 경로. 측정/채점 로직뿐 아니라
+// 게이트 "실행 경로"(스크립트·CI·훅·러너/가드 자체)도 포함한다 — 그것들을 약화시키면서
+// 동시에 재베이스라인하면 게이트를 우회할 수 있기 때문이다.
+const RISKY_RE =
+  /^(src\/|package\.json$|\.github\/workflows\/|\.githooks\/|harness\/eval\/(probes|scorers|runner|guard-baseline)\.mjs$|harness\/eval\/tasks\/|harness\/review\/)/
 
 export function detectLaundering(files) {
   const baselineTouched = files.includes(BASELINE)
