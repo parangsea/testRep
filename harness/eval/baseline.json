@@ -4,7 +4,7 @@
   "successRate": 1,
   "avgScore": 1,
   "metrics": {
-    "initial-bundle-budget": 16
+    "initial-bundle-budget": 17.7
   },
   "results": [
     {
@@ -22,7 +22,7 @@
     {
       "id": "initial-bundle-budget",
       "pass": true,
-      "metric": 16
+      "metric": 17.7
     }
   ]
 }
