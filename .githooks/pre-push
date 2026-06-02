@@ -1,0 +1,22 @@
+#!/bin/sh
+# 2중 검증 게이트 — push 전 강제 (npm run prepare 가 core.hooksPath=.githooks 로 활성화).
+#
+# ① eval 회귀 게이트 + baseline 무결성, ② codex 교차리뷰(high/critical 차단).
+# 우회: `git push --no-verify` (지양 — 무검증 push 가 됨).
+#
+# 번들 예산 프로브가 dist 실측이라 빌드가 선행돼야 한다.
+set -e
+
+echo "[pre-push] 빌드 중..."
+npm run --silent build
+
+echo "[pre-push] ① eval 회귀 게이트..."
+node harness/eval/runner.mjs
+
+echo "[pre-push] baseline 무결성 가드..."
+node harness/eval/guard-baseline.mjs
+
+echo "[pre-push] ② codex 교차리뷰 게이트 (high/critical 차단)..."
+node harness/review/cross-review.mjs --gate
+
+echo "[pre-push] ✅ 게이트 통과 — push 진행"

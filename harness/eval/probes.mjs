@@ -2,6 +2,7 @@
 // 빠르고 결정적(빌드/네트워크 불필요)이어서 이너 루프에서 반복 실행하기 좋다.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve, relative, isAbsolute } from 'node:path'
 
@@ -91,9 +92,34 @@ export function viteExcludesE2e(root = REPO_ROOT) {
   return /exclude\s*:\s*\[[^\]]*['"`][^'"`]*e2e[^'"`]*['"`]/.test(cfg)
 }
 
-/** 메트릭 스냅샷(metrics.json)에서 값 조회. (예: 초기 청크 gzip 크기) */
+/** 메트릭 스냅샷(metrics.json)에서 값 조회. (참고용 스냅샷 — 게이트는 measureInitialChunkGzipKb 실측을 사용) */
 export function readMetric(name) {
   const metrics = JSON.parse(readFileSync(join(HERE, 'metrics.json'), 'utf8'))
   if (!(name in metrics)) throw new Error(`metric not found: ${name}`)
   return metrics[name]
+}
+
+/**
+ * 초기 진입 청크(dist/assets/index-*.js)의 실제 gzip 크기(KB)를 "빌드 산출물에서 직접" 측정한다.
+ * 정적 metrics.json 값이 아니라 실측이므로, 실제 빌드 없이는 통과시킬 수 없다(가짜 신호 제거).
+ * dist 가 없으면 throw — 호출 측(태스크)에서 명시적 실패로 처리된다. (eval 전에 `npm run build` 필요)
+ * @returns {number} 진입 청크들 중 최대 gzip KB (소수 1자리)
+ */
+export function measureInitialChunkGzipKb(root = REPO_ROOT) {
+  const assetsDir = join(root, 'dist', 'assets')
+  if (!existsSync(assetsDir)) {
+    throw new Error('dist/assets 없음 — `npm run build` 후 측정하세요 (정적값 폴백 없음: 실측 게이트)')
+  }
+  const entries = readdirSync(assetsDir).sort().filter((f) => /^index-.*\.js$/.test(f))
+  if (!entries.length) {
+    throw new Error('진입 청크(dist/assets/index-*.js)를 찾지 못함 — 빌드 산출물 확인 필요')
+  }
+  // 진입 청크가 여러 개면 가장 큰 것을 기준으로 한다(예산은 최악값 기준이 안전).
+  let maxKb = 0
+  for (const f of entries) {
+    const gz = gzipSync(readFileSync(join(assetsDir, f)))
+    const kb = gz.length / 1024
+    if (kb > maxKb) maxKb = kb
+  }
+  return +maxKb.toFixed(1)
 }

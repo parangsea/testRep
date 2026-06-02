@@ -12,7 +12,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "msw:init": "msw init public --save"
+    "msw:init": "msw init public --save",
+    "verify": "npm run build && node harness/eval/runner.mjs",
+    "verify:update": "npm run build && node harness/eval/runner.mjs --update-baseline",
+    "guard:baseline": "node harness/eval/guard-baseline.mjs",
+    "cross-review": "node harness/review/cross-review.mjs",
+    "cross-review:gate": "node harness/review/cross-review.mjs --gate",
+    "harness": "npm run build && node harness/eval/runner.mjs && node harness/eval/guard-baseline.mjs",
+    "prepare": "git config core.hooksPath .githooks || exit 0"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -21,6 +28,7 @@
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
+    "dompurify": "^3.4.7",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",

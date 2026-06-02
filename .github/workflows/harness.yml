@@ -1,0 +1,32 @@
+# 하네스 회귀 게이트 — 클로드/사람의 코드 변경이 머지되기 전 강제로 통과해야 하는 검증.
+# 이전에는 게이트가 "수동 실행"에만 의존해 무검증 머지가 가능했다. 이 워크플로가 그 구멍을 닫는다.
+#
+# 주의: ② codex 교차리뷰는 외부 CLI + OpenAI 인증 + 비밀(.env)을 요구하므로 CI 에서 돌리지 않는다.
+#       교차리뷰는 로컬 pre-push 훅(.githooks/pre-push)에서 강제된다. CI 는 ① eval 회귀 + baseline 무결성만.
+name: harness
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # baseline 가드가 PR base SHA / push 이전 커밋을 해석하려면 전체 이력 필요
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build # 번들 예산 프로브가 dist 실측 → 빌드 필수
+      - name: Eval 회귀 게이트
+        run: node harness/eval/runner.mjs
+      # baseline 오염 가드: 이벤트별로 올바른 기준을 넘긴다.
+      #  - pull_request: PR 이 대상으로 한 base 브랜치 커밋(pull_request.base.sha) → PR 변경 묶음 전체와 비교
+      #  - push: 직전 tip(github.event.before)
+      # 둘 다 fetch-depth:0 으로 해석 가능. 해석 불가 시 가드는 fail-closed(초기 커밋만 예외).
+      - name: baseline 오염 가드
+        run: node harness/eval/guard-baseline.mjs "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"

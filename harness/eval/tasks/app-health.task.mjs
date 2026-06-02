@@ -30,8 +30,9 @@ export const tasks = [
   {
     id: 'initial-bundle-budget',
     difficulty: 'normal',
-    describe: '초기 진입 청크 gzip 크기가 예산(50KB) 이하인가',
-    run: async () => probes.readMetric('initialChunkGzipKb'),
+    describe: '초기 진입 청크 gzip 크기가 예산(50KB) 이하인가 (dist 실측)',
+    // 정적 metrics.json 이 아니라 실제 빌드 산출물을 측정한다. dist 부재 시 throw → 러너가 명시적 실패로 처리.
+    run: async () => probes.measureInitialChunkGzipKb(),
     scorer: maxValue(50, 'initial chunk gzip KB'),
   },
 ]

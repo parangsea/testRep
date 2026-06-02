@@ -5,6 +5,7 @@ import { useDeletePost, usePostQuery } from '../hooks/usePosts'
 import { useAuthStore } from '../store/authStore'
 import { formatDate } from '../utils/format'
 import { getErrorMessage } from '../utils/error'
+import DOMPurify from 'dompurify'
 import styles from './PostDetailPage.module.css'
 
 export default function PostDetailPage() {
@@ -46,12 +47,11 @@ export default function PostDetailPage() {
 
       {/*
         post.content 는 react-quill 이 생성한 HTML 입니다.
-        더미/신뢰 가능한 소스만 다루므로 그대로 렌더링하지만,
-        실제 사용자 입력을 다룰 때는 DOMPurify 등으로 sanitize 하세요.
+        저장형 XSS 방지를 위해 렌더 직전 DOMPurify 로 정화합니다(백엔드 sanitize 와 이중 방어).
       */}
       <div
         className={`${styles.content} ql-snow`}
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
       />
 
       <div className={styles.actions}>

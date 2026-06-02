@@ -19,15 +19,24 @@ import { dirname, join } from 'node:path'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REVIEWS_DIR = join(HERE, '..', '.reviews')
 
-const CODE_RE = /\.(mjs|cjs|js|jsx|ts|tsx|css|json)$/
+// 코드 + 배포/설정 파일까지 리뷰 대상에 포함(설정 변경이 적대 리뷰를 우회하던 구멍을 막는다).
+const CODE_RE = /\.(mjs|cjs|js|jsx|ts|tsx|css|json|ya?ml|sh|conf)$/
+// 확장자 없는 설정 파일은 베이스네임으로 인식.
+const CONFIG_NAMES = new Set(['Dockerfile', 'nginx.conf'])
 const EXCLUDE_RE = /(^|\/)(node_modules|dist|\.git|\.omc)\//
+// .env* 는 비밀이 들어갈 수 있다 → 외부 모델(codex)로 절대 보내지 않는다(비밀 유출 방지). 베이스네임 기준.
+const SECRET_RE = /(^|\/)\.env(\.|$)/
 
 function isReviewable(p) {
+  const base = p.split('/').pop()
+  const matches = CODE_RE.test(p) || CONFIG_NAMES.has(base)
   return (
-    CODE_RE.test(p) &&
+    matches &&
     !EXCLUDE_RE.test(p) &&
+    !SECRET_RE.test(p) &&
     !p.includes('harness/.traces') &&
     !p.includes('harness/.reviews') &&
+    // 잠금파일: diff 가 거대·노이즈여서 maxBuffer 압박 + 신호 낮음 → 제외(의도는 package.json 으로 검토).
     !p.endsWith('package-lock.json') &&
     !p.endsWith('baseline.json')
   )
@@ -83,21 +92,65 @@ const INSTRUCTION = [
   '셸 명령을 실행하지 말고 제공된 diff 만 근거로 분석하라.',
   '찾을 것: 숨은 버그, 엣지케이스(빈 배열·누락 필드·0건·NaN), 잘못된 가정,',
   '크로스플랫폼(Windows 경로/줄바꿈/realpath) 문제, 결정성 위반, 경쟁조건, 회귀 위험.',
-  '각 지적은 다음 형식으로: [심각도 critical/high/medium/low] 파일:라인 — 근거.',
-  '실질적 결함이 없으면 정확히 "문제 없음" 이라고 답하라.',
+  '',
+  '먼저 사람이 읽을 분석을 자유롭게 쓰고, 마지막에 반드시 아래 형식의 JSON 코드블록으로 끝맺어라:',
+  '```json',
+  '{"findings":[{"severity":"high","file":"경로","line":42,"rationale":"근거"}],"clean":false}',
+  '```',
+  'severity 는 critical/high/medium/low 중 하나. 실질적 결함이 없으면 findings 를 빈 배열로 두고 clean=true 로 하라.',
+  '결함이 하나라도 있으면 clean=false 로 하라. JSON 블록은 정확히 한 개만 출력하라.',
 ].join('\n')
 
+/** 산문에서 [심각도] 태그가 달린 줄을 추출(JSON 파싱 실패 시 폴백). 줄 어디에 있든 매칭(포맷 드리프트 대비). */
 function extractFindings(out) {
   const findings = []
   const seen = new Set()
   for (const line of out.split('\n')) {
-    const m = line.match(/^\s*\[(critical|high|medium|low)\]/i)
+    const m = line.match(/\[(critical|high|medium|low)\]/i)
     if (m && !seen.has(line.trim())) {
       seen.add(line.trim())
       findings.push({ severity: m[1].toLowerCase(), text: line.trim() })
     }
   }
   return findings
+}
+
+/**
+ * codex 출력에서 마지막 ```json 블록을 파싱한다(JSON-우선). 실패하면 산문 정규식으로 폴백.
+ * @returns {{findings:{severity:string,text:string}[], clean:boolean, parsed:boolean}}
+ *  parsed=true → 구조화 JSON 으로 판정. clean 은 JSON 의 clean===true && findings 0건일 때만 true.
+ */
+export function parseReview(out) {
+  // 여러 개여도 "마지막" json 블록을 신뢰(지시문 예시 블록 등 앞쪽 오탐 회피).
+  const blocks = [...out.matchAll(/```json\s*([\s\S]*?)```/gi)]
+  if (blocks.length) {
+    const raw = blocks[blocks.length - 1][1]
+    try {
+      const data = JSON.parse(raw)
+      if (data && Array.isArray(data.findings)) {
+        const rawFindings = data.findings
+        const findings = rawFindings
+          .filter((f) => f && /^(critical|high|medium|low)$/i.test(String(f.severity)))
+          .map((f) => {
+            const sev = String(f.severity).toLowerCase()
+            const loc = `${f.file ?? '?'}:${f.line ?? '?'}`
+            return { severity: sev, text: `[${sev}] ${loc} — ${f.rationale ?? ''}`.trim() }
+          })
+        // malformed: severity 오타/누락으로 일부 finding 이 버려짐 → 모델이 결함을 보고했는데 무시될 수 있다.
+        // 이런 구조 불량을 clean 으로 신뢰하면 fail-open 이 되므로, 호출 측에서 ambiguous(=fail-closed)로 처리한다.
+        const malformed = findings.length !== rawFindings.length
+        // clean 은 "원본 findings 가 비어 있고 clean===true" 일 때만. (버려진 항목이 있으면 clean 아님)
+        const clean = data.clean === true && rawFindings.length === 0
+        return { findings, clean, parsed: true, malformed }
+      }
+    } catch {
+      // JSON 깨짐 → 폴백
+    }
+  }
+  // 폴백: 산문 태그 추출 + 줄 단위로 앵커한 clean 판정(출력 중간의 "문제 없음" 오탐 축소).
+  const findings = extractFindings(out)
+  const clean = /(^|\n)\s*("?)문제\s*없음\2\s*(\.|。)?\s*(\n|$)/.test(out) || /\bno\s+(actionable|discrete)\s+issues\b/i.test(out)
+  return { findings, clean, parsed: false, malformed: false }
 }
 
 /**
@@ -175,13 +228,13 @@ if (isMain(import.meta.url)) {
   const reviewPath = join(REVIEWS_DIR, 'last-review.md')
   writeFileSync(reviewPath, out, 'utf8')
 
-  const findings = extractFindings(out)
+  const { findings, clean, parsed, malformed } = parseReview(out)
   const counts = { critical: 0, high: 0, medium: 0, low: 0 }
   for (const f of findings) counts[f.severity]++
-  const clean = /문제\s*없음|no\s+(discrete|actionable)?\s*issues/i.test(out)
-  const ambiguous = !reviewFailed && findings.length === 0 && !clean
+  // malformed(구조 불량 JSON: severity 오타로 finding 이 버려짐)는 결함이 은폐될 수 있으므로 무조건 ambiguous → fail-closed.
+  const ambiguous = !reviewFailed && (malformed || (findings.length === 0 && !clean))
 
-  console.log('\n=== GPT-5.5 교차 리뷰 결과 ===')
+  console.log(`\n=== GPT-5.5 교차 리뷰 결과 (${parsed ? 'JSON 구조화' : '산문 폴백'}) ===`)
   if (!findings.length) {
     console.log(clean ? '  ✅ 문제 없음 (GPT-5.5 판정)' : '  (심각도 태그가 달린 지적을 찾지 못함 — 원문 확인 필요)')
   } else {
