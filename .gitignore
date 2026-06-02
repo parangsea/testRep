@@ -21,6 +21,9 @@ playwright-report
 test-results
 .nyc_output
 
+# Harness tooling runtime artifacts (traces are reproducible, not committed)
+harness/.traces
+
 # Env (local overrides only — committed defaults: .env, .env.example)
 .env.local
 .env.*.local

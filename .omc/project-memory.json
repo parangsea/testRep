@@ -9,7 +9,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "cd \"C:\\Users\\kallo\\project\\testRp\" && npm run build 2>&1 | tail -30; echo \"BUILD_EXIT=$?\"",
+    "buildCommand": "cd \"C:\\Users\\kallo\\project\\testRp\" && echo \"=== ③ 앱 파이프라인 무손상 ===\" && npm run lint >/dev/null 2>&1 && echo \"lint: OK\" || echo \"lint: FAIL\"; npm run test >/tmp/u.log 2>&1 && echo \"unit: OK ($(grep -oE '[0-9]+ passed' /tmp/u.log | tail -1))\" || echo \"unit: FAIL\"; npm run build >/tmp/b.log 2>&1 && echo \"build: OK\" || echo \"build: FAIL\"",
     "testCommand": null,
     "lintCommand": null,
     "devCommand": null,
@@ -79,21 +79,21 @@
       "type": "file"
     },
     {
-      "path": "tsconfig.json",
-      "accessCount": 1,
-      "lastAccessed": 1780304134056,
+      "path": "tsconfig.app.json",
+      "accessCount": 2,
+      "lastAccessed": 1780358518149,
       "type": "file"
     },
     {
-      "path": "tsconfig.app.json",
-      "accessCount": 1,
-      "lastAccessed": 1780304141968,
+      "path": "tsconfig.json",
+      "accessCount": 2,
+      "lastAccessed": 1780358518980,
       "type": "file"
     },
     {
       "path": "tsconfig.node.json",
-      "accessCount": 1,
-      "lastAccessed": 1780304152043,
+      "accessCount": 2,
+      "lastAccessed": 1780358519075,
       "type": "file"
     },
     {

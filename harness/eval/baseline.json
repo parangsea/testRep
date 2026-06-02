@@ -1,0 +1,28 @@
+{
+  "n": 4,
+  "passed": 4,
+  "successRate": 1,
+  "avgScore": 1,
+  "metrics": {
+    "initial-bundle-budget": 16
+  },
+  "results": [
+    {
+      "id": "docs-links-intact",
+      "pass": true
+    },
+    {
+      "id": "app-entry-present",
+      "pass": true
+    },
+    {
+      "id": "vitest-isolated-from-e2e",
+      "pass": true
+    },
+    {
+      "id": "initial-bundle-budget",
+      "pass": true,
+      "metric": 16
+    }
+  ]
+}

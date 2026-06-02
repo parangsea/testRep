@@ -21,3 +21,7 @@ npm run dev           # http://localhost:5173
 - [아키텍처](./docs/architecture.md) — 기술 스택, 기능, 프로젝트 구조, 번들 최적화
 - [API & 목 전환](./docs/api-and-mock.md) — 더미 → 실제 백엔드 전환, API 엔드포인트 계약
 - [배포](./docs/deployment.md) — nginx 배포 가이드
+
+### 레퍼런스
+
+- [하네스 엔지니어링](./docs/harness-engineering/README.md) — LLM 에이전트 하네스 설계 레퍼런스 (컨텍스트·도구·오케스트레이션·메모리·안전)
