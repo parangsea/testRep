@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { Search } from 'lucide-react'
+import clsx from 'clsx'
 import {
   createColumnHelper,
   flexRender,
@@ -9,6 +10,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { usePostsQuery } from '../hooks/usePosts'
+import { useCategoriesQuery } from '../hooks/useCategories'
 import { useAuthStore } from '../store/authStore'
 import Pagination from '../components/Pagination'
 import { formatDate } from '../utils/format'
@@ -22,15 +24,18 @@ const columnHelper = createColumnHelper<Post>()
 export default function BoardListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
+  const { data: categories } = useCategoriesQuery()
 
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
   const search = searchParams.get('q') ?? ''
+  const categoryId = searchParams.get('category') ?? '' // 카테고리(게시판 종류) 필터
   const [keyword, setKeyword] = useState(search)
 
   const { data, isLoading, isError, error } = usePostsQuery({
     page,
     pageSize: PAGE_SIZE,
     search,
+    categoryId: categoryId || undefined,
   })
 
   // 서버 페이지네이션이므로 행 번호는 전체 개수 기준으로 역순 계산합니다.
@@ -41,6 +46,11 @@ export default function BoardListPage() {
         id: 'no',
         header: '번호',
         cell: ({ row }) => total - ((page - 1) * PAGE_SIZE + row.index),
+      }),
+      columnHelper.accessor('categoryName', {
+        id: 'category',
+        header: '게시판',
+        cell: ({ getValue }) => <span className={styles.categoryTag}>{getValue()}</span>,
       }),
       columnHelper.accessor('title', {
         header: '제목',
@@ -63,7 +73,16 @@ export default function BoardListPage() {
   const submitSearch = (e: FormEvent) => {
     e.preventDefault()
     const next = new URLSearchParams()
+    if (categoryId) next.set('category', categoryId) // 검색해도 현재 카테고리 유지
     if (keyword.trim()) next.set('q', keyword.trim())
+    next.set('page', '1')
+    setSearchParams(next)
+  }
+
+  const selectCategory = (id: string) => {
+    const next = new URLSearchParams()
+    if (id) next.set('category', id)
+    if (search) next.set('q', search) // 카테고리 전환 시 검색어는 유지
     next.set('page', '1')
     setSearchParams(next)
   }
@@ -87,6 +106,27 @@ export default function BoardListPage() {
             글쓰기
           </Link>
         )}
+      </div>
+
+      {/* 게시판 종류(카테고리) 탭 */}
+      <div className={styles.tabs}>
+        <button
+          type="button"
+          className={clsx(styles.tab, !categoryId && styles.tabActive)}
+          onClick={() => selectCategory('')}
+        >
+          전체
+        </button>
+        {categories?.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={clsx(styles.tab, categoryId === c.id && styles.tabActive)}
+            onClick={() => selectCategory(c.id)}
+          >
+            {c.name}
+          </button>
+        ))}
       </div>
 
       <form className={styles.search} onSubmit={submitSearch}>

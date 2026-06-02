@@ -1,0 +1,32 @@
+.title {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.form {
+  padding: 20px;
+  margin: 16px 0 24px;
+}
+.form .btn {
+  margin-top: 4px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.name {
+  font-weight: 600;
+}

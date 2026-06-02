@@ -1,9 +1,11 @@
 // 더미용 JWT 발급/디코드 유틸. (실제 서명 검증은 하지 않습니다 — 오직 mock 용도)
+import type { Role } from '../types'
 
 interface MockJwtPayload {
   sub: string
   username: string
   email: string
+  role: Role
   iat: number
   exp: number
 }
@@ -27,13 +29,19 @@ function base64UrlDecode(input: string): string {
 }
 
 /** 더미 사용자 정보를 담은 (서명되지 않은) JWT 문자열을 생성합니다. */
-export function signMockJwt(user: { id: string; username: string; email: string }): string {
+export function signMockJwt(user: {
+  id: string
+  username: string
+  email: string
+  role: Role
+}): string {
   const header = { alg: 'HS256', typ: 'JWT' }
   const now = Math.floor(Date.now() / 1000)
   const payload: MockJwtPayload = {
     sub: user.id,
     username: user.username,
     email: user.email,
+    role: user.role,
     iat: now,
     exp: now + 60 * 60 * 24 * 7, // 7일
   }

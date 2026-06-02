@@ -7,6 +7,9 @@
 # 번들 예산 프로브가 dist 실측이라 빌드가 선행돼야 한다.
 set -e
 
+echo "[pre-push] 프런트엔드 단위 테스트(vitest)..."
+npm test
+
 echo "[pre-push] 빌드 중..."
 npm run --silent build
 

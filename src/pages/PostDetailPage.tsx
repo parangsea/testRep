@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
+import DOMPurify from 'dompurify'
 import { useDeletePost, usePostQuery } from '../hooks/usePosts'
 import { useAuthStore } from '../store/authStore'
 import { formatDate } from '../utils/format'
 import { getErrorMessage } from '../utils/error'
-import DOMPurify from 'dompurify'
+import CommentSection from '../components/CommentSection'
+import UserProfileModal from '../components/UserProfileModal'
 import styles from './PostDetailPage.module.css'
 
 export default function PostDetailPage() {
@@ -14,13 +17,16 @@ export default function PostDetailPage() {
   const user = useAuthStore((s) => s.user)
   const { data: post, isLoading, isError, error } = usePostQuery(id)
   const deleteMutation = useDeletePost()
+  // 작성자(글/댓글) 이름 클릭 시 띄우는 유저 정보 모달 — 페이지에서 단일 관리.
+  const [profileUserId, setProfileUserId] = useState<string | null>(null)
 
   if (isLoading) return <p className="muted">불러오는 중...</p>
   if (isError || !post) {
     return <p className="error-text">{getErrorMessage(error, '게시글을 찾을 수 없습니다.')}</p>
   }
 
-  const isAuthor = user?.id === post.authorId
+  // 작성자 본인 또는 관리자면 수정/삭제 가능(서버 권한과 일치).
+  const canManage = Boolean(user && (user.id === post.authorId || user.role === 'admin'))
 
   const onDelete = async () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return
@@ -39,9 +45,20 @@ export default function PostDetailPage() {
         <title>{post.title} | testRep 게시판</title>
       </Helmet>
 
+      <div className={styles.categoryRow}>
+        <Link to={`/posts?category=${post.categoryId}`} className={styles.category}>
+          {post.categoryName}
+        </Link>
+      </div>
       <h1 className={styles.title}>{post.title}</h1>
       <div className={styles.meta}>
-        <span>{post.authorName}</span>
+        <button
+          type="button"
+          className={styles.authorBtn}
+          onClick={() => setProfileUserId(post.authorId)}
+        >
+          {post.authorName}
+        </button>
         <span>{formatDate(post.createdAt)}</span>
       </div>
 
@@ -58,7 +75,7 @@ export default function PostDetailPage() {
         <Link to="/posts" className="btn btn-secondary">
           목록
         </Link>
-        {isAuthor && (
+        {canManage && (
           <>
             <Link to={`/posts/${post.id}/edit`} className="btn">
               수정
@@ -74,6 +91,10 @@ export default function PostDetailPage() {
           </>
         )}
       </div>
+
+      <CommentSection postId={post.id} onAuthorClick={setProfileUserId} />
+
+      <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
     </article>
   )
 }

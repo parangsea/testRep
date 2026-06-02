@@ -8,6 +8,7 @@ import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 import { postSchema, type PostFormValues } from '../schemas/post.schema'
 import { useCreatePost, usePostQuery, useUpdatePost } from '../hooks/usePosts'
+import { useCategoriesQuery } from '../hooks/useCategories'
 import { getErrorMessage } from '../utils/error'
 import styles from './PostFormPage.module.css'
 
@@ -17,6 +18,7 @@ export default function PostFormPage() {
   const navigate = useNavigate()
 
   const { data: existing } = usePostQuery(id)
+  const { data: categories } = useCategoriesQuery()
   const createMutation = useCreatePost()
   const updateMutation = useUpdatePost(id ?? '')
 
@@ -28,12 +30,16 @@ export default function PostFormPage() {
     formState: { errors, isSubmitting },
   } = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
-    defaultValues: { title: '', content: '' },
+    defaultValues: { title: '', content: '', categoryId: '' },
   })
+
+  // 카테고리 조회가 끝났는데 0건이면 글을 쓸 수 없다(필수 필드인데 선택지가 없음).
+  const noCategories = categories !== undefined && categories.length === 0
 
   // 수정 모드: 기존 게시글을 불러오면 폼에 채웁니다.
   useEffect(() => {
-    if (existing) reset({ title: existing.title, content: existing.content })
+    if (existing)
+      reset({ title: existing.title, content: existing.content, categoryId: existing.categoryId })
   }, [existing, reset])
 
   const onSubmit = async (values: PostFormValues) => {
@@ -61,6 +67,24 @@ export default function PostFormPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="field">
+          <label htmlFor="categoryId">게시판</label>
+          <select id="categoryId" {...register('categoryId')} disabled={noCategories}>
+            <option value="">카테고리 선택</option>
+            {categories?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {noCategories && (
+            <span className="error-text">
+              등록된 카테고리가 없습니다. 관리자가 카테고리를 먼저 추가해야 글을 쓸 수 있습니다.
+            </span>
+          )}
+          {errors.categoryId && <span className="error-text">{errors.categoryId.message}</span>}
+        </div>
+
+        <div className="field">
           <label htmlFor="title">제목</label>
           <input id="title" type="text" {...register('title')} />
           {errors.title && <span className="error-text">{errors.title.message}</span>}
@@ -82,7 +106,7 @@ export default function PostFormPage() {
           <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
             취소
           </button>
-          <button type="submit" className="btn" disabled={isSubmitting}>
+          <button type="submit" className="btn" disabled={isSubmitting || noCategories}>
             {isEdit ? '수정' : '등록'}
           </button>
         </div>

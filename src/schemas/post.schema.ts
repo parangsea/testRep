@@ -6,5 +6,6 @@ const hasText = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g
 export const postSchema = z.object({
   title: z.string().min(1, '제목을 입력하세요.').max(200, '제목은 200자 이내여야 합니다.'),
   content: z.string().refine(hasText, '내용을 입력하세요.'),
+  categoryId: z.string().min(1, '카테고리를 선택하세요.'),
 })
 export type PostFormValues = z.infer<typeof postSchema>

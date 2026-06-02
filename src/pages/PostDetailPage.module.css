@@ -2,10 +2,41 @@
   padding: 24px 28px;
 }
 
+.categoryRow {
+  margin-bottom: 8px;
+}
+.category {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.category:hover {
+  text-decoration: none;
+  background: #e0e7ff;
+}
+
 .title {
   font-size: 24px;
   margin: 0 0 12px;
   word-break: break-word;
+}
+
+.authorBtn {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.authorBtn:hover {
+  text-decoration: underline;
 }
 
 .meta {

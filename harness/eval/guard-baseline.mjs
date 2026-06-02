@@ -5,10 +5,11 @@
 // "고치는" 가장 쉬운 길이 재베이스라인이며, 이때 src/채점로직 변경과 baseline 변경이 같은
 // 변경 묶음에 섞이면 회귀가 새 정상값으로 세탁된다.
 //
-// 이 가드는 base ref 대비 변경 파일을 보고, baseline.json 이 (a) 앱 소스(src/),
+// 이 가드는 base ref..HEAD 의 "각 커밋"을 검사해, 단일 커밋이 baseline.json 과 (a) 앱 소스(src/),
 // (b) 채점/측정 로직(probes·scorers·tasks), 또는 (c) 게이트 실행 경로
-// (package.json·CI workflow·.githooks·runner·guard 자체)와 "함께" 수정되면 실패시킨다.
-// → baseline 갱신은 별도 커밋 + 사람 검토를 강제한다.
+// (package.json·CI workflow·.githooks·runner·guard 자체)를 "한 커밋에 함께" 수정하면 실패시킨다.
+// → baseline 갱신을 별도 커밋으로 분리하면 통과한다(누적 범위가 아닌 커밋 단위라 분리가 실제로 통함).
+//   같은 커밋에 섞으면 회귀를 새 정상값으로 세탁하면서 사람 검토를 피할 수 있기 때문이다.
 //
 // 사용:
 //   node harness/eval/guard-baseline.mjs            # HEAD~1 대비
@@ -20,16 +21,22 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { realpathSync } from 'node:fs'
 
-function changedFiles(ref) {
-  // ref..HEAD 의 "커밋된" 변경만 본다. ref 와 워킹트리를 비교하면 미커밋 변경이 섞여
-  // 결과가 워킹트리 상태에 의존(비결정)하고 오탐이 난다 — 세탁 가드는 커밋/푸시되는 내용 기준이어야 한다.
-  // --name-only: 변경된 경로만. 실패 시 던진다(호출 측에서 fail-closed 처리).
+/** baseRef..HEAD 에 새로 추가된 커밋 SHA 목록. 실패 시 던진다(호출 측 fail-closed). */
+function commitsInRange(baseRef) {
   try {
-    const out = execFileSync('git', ['diff', '--name-only', ref, 'HEAD', '--'], { encoding: 'utf8' })
+    const out = execFileSync('git', ['rev-list', `${baseRef}..HEAD`], { encoding: 'utf8' })
     return out.split('\n').map((s) => s.trim()).filter(Boolean)
   } catch (e) {
-    throw new Error(`git diff ${ref} HEAD 실패: ${(e.stderr || e.message || '').toString().trim()}`)
+    throw new Error(`git rev-list ${baseRef}..HEAD 실패: ${(e.stderr || e.message || '').toString().trim()}`)
   }
+}
+
+/** 한 커밋이 변경한 파일 목록(머지 커밋 포함, 셸 미사용). */
+function filesInCommit(sha) {
+  const out = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', sha], {
+    encoding: 'utf8',
+  })
+  return out.split('\n').map((s) => s.trim()).filter(Boolean)
 }
 
 /** 주어진 ref 가 커밋으로 해석되는가 (없는 ref/얕은 클론 판별). */
@@ -109,27 +116,43 @@ if (isMain(import.meta.url)) {
     process.exit(1)
   }
 
-  let files
+  let commits
   try {
-    files = changedFiles(baseRef)
+    commits = commitsInRange(baseRef)
   } catch (e) {
-    // ref 는 있는데 diff 가 실패 → 비정상. fail-closed.
-    console.error(`❌ git diff ${baseRef} 실패 — 비교 불능을 통과로 처리하지 않음(fail-closed): ${e.message}`)
+    // ref 는 있는데 rev-list 가 실패 → 비정상. fail-closed.
+    console.error(`❌ 커밋 목록 조회 실패 — 비교 불능을 통과로 처리하지 않음(fail-closed): ${e.message}`)
     process.exit(1)
   }
-  const { baselineTouched, risky, laundering } = detectLaundering(files)
 
   const baseLabel = `${mode} ${baseRef.slice(0, 12)}`
-  if (laundering) {
-    console.error(`❌ baseline 오염 위험: ${BASELINE} 이(가) 아래 변경과 같은 묶음에서 수정됨 (기준 ${baseLabel})`)
-    for (const f of risky) console.error(`     · ${f}`)
-    console.error('   → 회귀 세탁 가능. baseline 갱신은 별도 커밋으로 분리하고 사람 검토를 받으세요.')
+  if (commits.length === 0) {
+    console.log(`✅ baseline 무결성 가드 통과 (새 커밋 없음, 기준 ${baseLabel})`)
+    process.exit(0)
+  }
+
+  // 각 커밋을 독립적으로 검사 — 한 커밋이 baseline 과 위험 파일을 함께 담았는지.
+  const offenders = []
+  let anyBaselineTouched = false
+  for (const sha of commits) {
+    const { baselineTouched, risky, laundering } = detectLaundering(filesInCommit(sha))
+    if (baselineTouched) anyBaselineTouched = true
+    if (laundering) offenders.push({ sha, risky })
+  }
+
+  if (offenders.length) {
+    console.error(`❌ baseline 오염 위험: 아래 커밋이 ${BASELINE} 과 위험 변경을 "한 커밋"에 함께 담음 (기준 ${baseLabel})`)
+    for (const o of offenders) {
+      console.error(`   · 커밋 ${o.sha.slice(0, 12)} — 함께 변경된 위험 파일:`)
+      for (const f of o.risky) console.error(`       - ${f}`)
+    }
+    console.error('   → baseline.json 갱신을 별도 커밋으로 분리하세요(같은 커밋에 src/게이트 변경과 섞지 말 것).')
     process.exit(1)
   }
 
   console.log(
-    baselineTouched
-      ? `✅ baseline 무결성 가드 통과 (baseline 단독 변경, 기준 ${baseLabel})`
+    anyBaselineTouched
+      ? `✅ baseline 무결성 가드 통과 (baseline 이 별도 커밋으로 분리됨, 기준 ${baseLabel})`
       : `✅ baseline 무결성 가드 통과 (baseline 변경 없음, 기준 ${baseLabel})`
   )
   process.exit(0)

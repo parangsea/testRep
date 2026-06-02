@@ -18,7 +18,7 @@
     "guard:baseline": "node harness/eval/guard-baseline.mjs",
     "cross-review": "node harness/review/cross-review.mjs",
     "cross-review:gate": "node harness/review/cross-review.mjs --gate",
-    "harness": "npm run build && node harness/eval/runner.mjs && node harness/eval/guard-baseline.mjs",
+    "harness": "npm run lint && npm test && npm run build && node harness/eval/runner.mjs && node harness/eval/guard-baseline.mjs",
     "prepare": "node -e \"var c=process.env.CI;if(!(c&&c!=='false'&&c!=='0'))require('child_process').execSync('git config core.hooksPath .githooks')\" || exit 0"
   },
   "dependencies": {
