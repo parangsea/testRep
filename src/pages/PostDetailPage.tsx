@@ -6,22 +6,28 @@ import DOMPurify from 'dompurify'
 import { useDeletePost, usePostQuery } from '../hooks/usePosts'
 import { useAttachmentsQuery } from '../hooks/useAttachments'
 import { inlineImageSrcs } from '../utils/contentImages'
+import { parsePostId } from '../schemas/route.schema'
 import { useAuthStore } from '../store/authStore'
 import { formatDate } from '../utils/format'
 import { getErrorMessage } from '../utils/error'
 import CommentSection from '../components/CommentSection'
 import UserProfileModal from '../components/UserProfileModal'
+import NotFoundPage from './NotFoundPage'
 import styles from './PostDetailPage.module.css'
 
 export default function PostDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  // 라우트 id 가 양의 정수 형식이 아니면(예: /posts/abc) null → 쿼리 비활성(불필요한 API 호출 차단).
+  const id = parsePostId(useParams<{ id: string }>().id)
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const { data: post, isLoading, isError, error } = usePostQuery(id)
-  const { data: attachments } = useAttachmentsQuery(id)
+  const { data: post, isLoading, isError, error } = usePostQuery(id ?? undefined)
+  const { data: attachments } = useAttachmentsQuery(id ?? undefined)
   const deleteMutation = useDeletePost()
   // 작성자(글/댓글) 이름 클릭 시 띄우는 유저 정보 모달 — 페이지에서 단일 관리.
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
+
+  // id 형식이 잘못됨(예: /posts/abc) → 404(수정 폼과 동일한 반응으로 일관).
+  if (!id) return <NotFoundPage />
 
   if (isLoading) return <p className="muted">불러오는 중...</p>
   if (isError || !post) {
@@ -40,8 +46,8 @@ export default function PostDetailPage() {
       await deleteMutation.mutateAsync(post.id)
       toast.success('삭제되었습니다.')
       navigate('/posts')
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 

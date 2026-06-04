@@ -32,8 +32,8 @@ export default function AdminCategoriesPage() {
       await createMutation.mutateAsync(values)
       toast.success('카테고리가 추가되었습니다.')
       reset({ name: '', slug: '' })
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   })
 
@@ -42,8 +42,8 @@ export default function AdminCategoriesPage() {
     try {
       await deleteMutation.mutateAsync(id)
       toast.success('카테고리가 삭제되었습니다.')
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 

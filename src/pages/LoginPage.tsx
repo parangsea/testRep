@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import { loginSchema, type LoginFormValues } from '../schemas/auth.schema'
 import { useLogin } from '../hooks/useAuth'
-import { getErrorMessage } from '../utils/error'
 import styles from './AuthPage.module.css'
 
 interface LocationState {
@@ -32,8 +31,8 @@ export default function LoginPage() {
       await loginMutation.mutateAsync(values)
       toast.success('로그인되었습니다.')
       navigate(from, { replace: true })
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 
@@ -60,7 +59,7 @@ export default function LoginPage() {
           />
           {errors.password && <span className="error-text">{errors.password.message}</span>}
         </div>
-        <button type="submit" className="btn" style={{ width: '100%' }} disabled={isSubmitting}>
+        <button type="submit" className={`btn ${styles.submitBtn}`} disabled={isSubmitting}>
           로그인
         </button>
       </form>

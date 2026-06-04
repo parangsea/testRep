@@ -22,6 +22,9 @@ import { attachmentKeys, useAttachmentsQuery, useDeleteAttachment } from '../hoo
 import { attachmentsApi } from '../api/attachments.api'
 import { inlineImageSrcs, rewriteImageSrcs, stripBlobImages } from '../utils/contentImages'
 import { getErrorMessage } from '../utils/error'
+import { parsePostId } from '../schemas/route.schema'
+import { describeRejections, validateImageFiles } from '../utils/imageUpload'
+import NotFoundPage from './NotFoundPage'
 import styles from './PostFormPage.module.css'
 
 // 에디터 툴바 — 기본 서식.
@@ -49,15 +52,18 @@ interface PendingInline {
 }
 
 export default function PostFormPage() {
-  const { id } = useParams<{ id: string }>()
-  const isEdit = Boolean(id)
+  const rawId = useParams<{ id: string }>().id
+  const isEdit = rawId !== undefined
+  const id = parsePostId(rawId) // 형식이 잘못되면 null
   const navigate = useNavigate()
   const qc = useQueryClient()
   const quillRef = useRef<ReactQuill>(null)
 
-  const { data: existing } = usePostQuery(id)
+  const { data: existing } = usePostQuery(id ?? undefined)
   const { data: categories } = useCategoriesQuery()
-  const { data: existingAttachments } = useAttachmentsQuery(isEdit ? id : undefined)
+  const { data: existingAttachments, isLoading: attachmentsLoading } = useAttachmentsQuery(
+    id ?? undefined,
+  )
   const createMutation = useCreatePost()
   const updateMutation = useUpdatePost(id ?? '')
   const deleteAttachment = useDeleteAttachment(id ?? '')
@@ -146,12 +152,14 @@ export default function PostFormPage() {
 
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? [])
-    const images = picked.filter((f) => f.type.startsWith('image/'))
-    if (images.length < picked.length) toast.info('이미지 파일만 첨부할 수 있습니다.')
-    if (images.length)
+    // 타입/크기/개수(기존 첨부+대기분 총합)를 1차 검증 — 통과분만 추가, 거부분은 사유 안내.
+    const currentCount = pending.length + (existingAttachments?.length ?? 0)
+    const { accepted, rejected } = validateImageFiles(picked, currentCount)
+    if (rejected.length) toast.info(describeRejections(rejected))
+    if (accepted.length)
       setPending((prev) => [
         ...prev,
-        ...images.map((file) => ({ file, url: URL.createObjectURL(file) })),
+        ...accepted.map((file) => ({ file, url: URL.createObjectURL(file) })),
       ])
     e.target.value = ''
   }
@@ -167,8 +175,8 @@ export default function PostFormPage() {
   const onDeleteExisting = async (attachmentId: string) => {
     try {
       await deleteAttachment.mutateAsync(attachmentId)
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 
@@ -240,9 +248,14 @@ export default function PostFormPage() {
       toast.success(isEdit ? '수정되었습니다.' : '등록되었습니다.')
       navigate(`/posts/${postId}`)
     } catch (e) {
+      // 이 흐름은 mutation(생성/수정) + 첨부 직접 업로드/postsApi.update 가 섞여 있어
+      // 화면에서 통합 처리한다(글 mutation 은 meta.suppressGlobalErrorToast 로 전역 opt-out).
       toast.error(getErrorMessage(e))
     }
   }
+
+  // 수정 경로인데 id 형식이 잘못됨(예: /posts/abc/edit) → 404.
+  if (isEdit && !id) return <NotFoundPage />
 
   return (
     <section className={`card ${styles.formCard}`}>
@@ -296,8 +309,19 @@ export default function PostFormPage() {
 
         <div className="field">
           <label htmlFor="images">이미지 첨부 (갤러리)</label>
-          <input id="images" type="file" accept="image/*" multiple onChange={onPickFiles} />
-          <p className={styles.hint}>이미지 파일만 첨부할 수 있습니다.</p>
+          <input
+            id="images"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={onPickFiles}
+            // 수정 화면에서 기존 첨부 로딩이 끝나기 전엔 총합 개수 한도가 과소집계되어
+            // maxCount 가 우회될 수 있다 → 로딩 중에는 선택 자체를 막는다(경쟁조건 차단).
+            disabled={attachmentsLoading}
+          />
+          <p className={styles.hint}>
+            {attachmentsLoading ? '기존 첨부를 불러오는 중...' : '이미지 파일만 첨부할 수 있습니다.'}
+          </p>
 
           {galleryExisting.length > 0 && (
             <div className={styles.thumbs}>

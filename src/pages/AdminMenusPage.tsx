@@ -61,8 +61,8 @@ export default function AdminMenusPage() {
         toast.success('메뉴가 추가되었습니다.')
       }
       resetForm()
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   })
 
@@ -72,8 +72,8 @@ export default function AdminMenusPage() {
       await deleteMutation.mutateAsync(m.id)
       if (editingId === m.id) resetForm()
       toast.success('메뉴가 삭제되었습니다.')
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 
@@ -86,8 +86,8 @@ export default function AdminMenusPage() {
     ;[ids[index], ids[target]] = [ids[target], ids[index]]
     try {
       await reorderMutation.mutateAsync(ids)
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 

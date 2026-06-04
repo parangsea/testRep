@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import { registerSchema, type RegisterFormValues } from '../schemas/auth.schema'
 import { useRegister } from '../hooks/useAuth'
-import { getErrorMessage } from '../utils/error'
 import styles from './AuthPage.module.css'
 
 export default function RegisterPage() {
@@ -30,8 +29,8 @@ export default function RegisterPage() {
       })
       toast.success('회원가입이 완료되었습니다.')
       navigate('/posts', { replace: true })
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 
@@ -75,7 +74,7 @@ export default function RegisterPage() {
             <span className="error-text">{errors.confirmPassword.message}</span>
           )}
         </div>
-        <button type="submit" className="btn" style={{ width: '100%' }} disabled={isSubmitting}>
+        <button type="submit" className={`btn ${styles.submitBtn}`} disabled={isSubmitting}>
           회원가입
         </button>
       </form>

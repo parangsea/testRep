@@ -111,8 +111,8 @@ function CommentItem({ postId, comment, isReplyable, onAuthorClick }: CommentIte
     try {
       await deleteMutation.mutateAsync(comment.id)
       toast.success('댓글이 삭제되었습니다.')
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   }
 
@@ -216,8 +216,8 @@ function CommentForm({
     try {
       await onSubmit(values.content.trim())
       reset({ content: '' })
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch {
+      // 에러 토스트는 전역(queryClient MutationCache.onError)에서 처리한다.
     }
   })
 
