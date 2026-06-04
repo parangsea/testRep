@@ -127,6 +127,25 @@ export interface MenuInput {
   order?: number
 }
 
+// ----- 첨부 이미지 -----
+
+/** 게시글 이미지 첨부. 백엔드 AttachmentResponse 와 동일한 계약. */
+export interface Attachment {
+  id: string
+  postId: string
+  uploaderId: string
+  /** 업로드 당시 원본 파일명. */
+  originalFilename: string
+  /** MIME 타입 (예: image/jpeg). 현재 래스터 이미지만 허용. */
+  mediaType: string
+  width: number
+  height: number
+  byteSize: number
+  /** 공개 다운로드 경로 (예: /api/attachments/1). 인증 없이 <img src> 로 표시 가능. */
+  url: string
+  createdAt: string
+}
+
 export interface Paginated<T> {
   items: T[]
   total: number

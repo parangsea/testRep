@@ -30,9 +30,9 @@ npm run test:watch  # 워치 모드 (개발)
 ## E2E 테스트 (Playwright)
 
 - 위치: `e2e/*.spec.ts`. `playwright.config.ts` 의 `webServer` 가 `npm run dev` 를 자동 기동하며, 앱은 Vite 프록시를 통해 **실제 백엔드**로 요청한다.
-- 공유 백엔드를 오염시키지 않도록 **읽기·로그인 위주**로 작성한다(글/댓글 생성 같은 쓰기 시나리오는 제외).
+- 공유 백엔드를 오염시키지 않도록, 쓰기(글 작성·이미지 첨부) 시나리오는 **생성한 글을 테스트 끝(finally)에서 반드시 삭제(자기정리)**한다.
 - 접근성 우선 셀렉터(`getByRole`/`getByLabel`)와 자동 재시도(`expect`)로 견고하게 작성한다. 실서버 응답 지연(refetch) 구간은 단언 자동 대기로 흡수한다.
-- 커버: 게시판 목록/상세·카테고리 필터(`e2e/board.spec.ts`), 로그인 성공·실패(`e2e/auth.spec.ts`).
+- 커버: 게시판 목록/상세·카테고리 필터(`board.spec.ts`), 로그인 성공·실패(`auth.spec.ts`), 글 작성/삭제·이미지 첨부(`post-write.spec.ts`).
 
 ```bash
 npm run test:e2e    # chromium e2e (브라우저 미설치 시: npx playwright install chromium)

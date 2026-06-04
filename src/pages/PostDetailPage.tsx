@@ -4,6 +4,8 @@ import { Helmet } from 'react-helmet-async'
 import { toast } from 'react-toastify'
 import DOMPurify from 'dompurify'
 import { useDeletePost, usePostQuery } from '../hooks/usePosts'
+import { useAttachmentsQuery } from '../hooks/useAttachments'
+import { inlineImageSrcs } from '../utils/contentImages'
 import { useAuthStore } from '../store/authStore'
 import { formatDate } from '../utils/format'
 import { getErrorMessage } from '../utils/error'
@@ -16,6 +18,7 @@ export default function PostDetailPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const { data: post, isLoading, isError, error } = usePostQuery(id)
+  const { data: attachments } = useAttachmentsQuery(id)
   const deleteMutation = useDeletePost()
   // 작성자(글/댓글) 이름 클릭 시 띄우는 유저 정보 모달 — 페이지에서 단일 관리.
   const [profileUserId, setProfileUserId] = useState<string | null>(null)
@@ -27,6 +30,9 @@ export default function PostDetailPage() {
 
   // 작성자 본인 또는 관리자면 수정/삭제 가능(서버 권한과 일치).
   const canManage = Boolean(user && (user.id === post.authorId || user.role === 'admin'))
+  // 본문에 인라인으로 삽입된 이미지는 갤러리에서 제외한다(중복 표시 방지).
+  const inlineSrcs = inlineImageSrcs(post.content)
+  const galleryAttachments = (attachments ?? []).filter((a) => !inlineSrcs.has(a.url))
 
   const onDelete = async () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return
@@ -70,6 +76,27 @@ export default function PostDetailPage() {
         className={`${styles.content} ql-snow`}
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
       />
+
+      {galleryAttachments.length > 0 && (
+        <div className={styles.gallery}>
+          {galleryAttachments.map((a) => (
+            <a
+              key={a.id}
+              className={styles.galleryItem}
+              href={a.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <img
+                className={styles.galleryImg}
+                src={a.url}
+                alt={a.originalFilename}
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className={styles.actions}>
         <Link to="/posts" className="btn btn-secondary">

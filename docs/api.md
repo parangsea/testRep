@@ -32,6 +32,10 @@
 | POST | `/posts/:id/comments` | (Bearer) `{content, parentId?}` → `comment` |
 | PUT | `/comments/:id` | (Bearer, 작성자 또는 admin) `{content}` → `comment` |
 | DELETE | `/comments/:id` | (Bearer, 작성자 또는 admin) → 204 (최상위 댓글 삭제 시 대댓글 cascade) |
+| GET | `/posts/:postId/attachments` | → `Attachment[]` (게시글 첨부 이미지 목록) |
+| POST | `/posts/:postId/attachments` | (Bearer) `multipart/form-data` field=`file` (이미지 전용) → `Attachment` |
+| GET | `/attachments/:id` | → 이미지 바이트 (공개, 원본 Content-Type) |
+| DELETE | `/attachments/:id` | (Bearer, 업로더 또는 admin) → 204 |
 
 ## 권한 모델
 
@@ -40,7 +44,18 @@
 - **카테고리·메뉴 관리**: admin 전용.
 - 백엔드 시드 계정: `admin / admin1234` (관리자), `user / user1234` (일반).
 
+## 이미지 첨부
+
+게시글에 이미지를 첨부합니다(현재 게시글 전용, 댓글 첨부는 백엔드 확장 대기).
+
+- **업로드**: `multipart/form-data` 로 `file` 필드에 이미지 1개. 서버가 이미지 여부를 검증(비이미지/SVG 거부).
+- **표시**: 응답의 `url`(예: `/api/attachments/1`)은 인증 불필요 공개 경로 → `<img src={url}>` 로 바로 표시.
+- **첨부 모델**: 본문 HTML 과 별개인 "첨부 목록"(갤러리). 상세 페이지에서 갤러리로 렌더한다.
+- **수정**: 추가 업로드 / `DELETE /attachments/:id`. 교체는 삭제 후 재업로드(첨부 PUT 없음).
+
+> ⚠️ **본문 인라인 이미지 제한**: 백엔드가 게시글 `content` 의 `<img src>` 를 sanitize 로 제거하므로, 현재는 본문 안에 인라인으로 이미지를 넣을 수 없다(갤러리 첨부만 가능). 인라인을 지원하려면 백엔드가 content 의 `/api/attachments/...` 이미지 src 를 허용해야 한다.
+
 ## 도메인 타입
 
-요청/응답 형태의 단일 출처는 `src/types/index.ts` 입니다 (`Category`, `Comment`, `MenuItem`, `UserProfile`, `Role` 등).
+요청/응답 형태의 단일 출처는 `src/types/index.ts` 입니다 (`Category`, `Comment`, `MenuItem`, `UserProfile`, `Attachment`, `Role` 등).
 프런트의 `src/api/*.api.ts` 는 이 타입과 위 엔드포인트 계약을 그대로 사용합니다.

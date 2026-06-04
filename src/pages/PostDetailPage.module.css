@@ -69,3 +69,28 @@
   border-top: 1px solid var(--color-border);
   padding-top: 16px;
 }
+
+/* 첨부 이미지 갤러리 (본문에 인라인으로 들어가지 않은 첨부) */
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+}
+.galleryItem {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+.galleryItem:hover {
+  border-color: var(--color-primary);
+}
+.galleryImg {
+  display: block;
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+}
