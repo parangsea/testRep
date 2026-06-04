@@ -67,6 +67,15 @@ export function aggregate(results) {
   }
 }
 
+/**
+ * 예산(ceiling)형 메트릭 — scorer 의 maxValue(임계값)로 "한도 이하"만 보장하면 되는 값.
+ * 이런 메트릭은 "직전 빌드보다 커지면 회귀"라는 래칫(아래 metricRegress)에서 제외한다.
+ *  - 래칫은 예산(예: 50KB)의 의미와 모순된다: 한도 한참 아래여도 1바이트 증가가 회귀가 되어,
+ *    기능 추가 때마다 baseline 을 올리는 의식이 강제된다.
+ *  - 진짜 비대화(한도 초과)는 해당 태스크 scorer 의 pass=false → regressedTasks 로 이미 차단된다.
+ */
+const BUDGET_METRICS = new Set(['initial-bundle-budget'])
+
 /** 현재 결과를 baseline 과 비교해 회귀 여부를 판정. */
 export function compareBaseline(current, baseline) {
   const deltas = {
@@ -84,6 +93,7 @@ export function compareBaseline(current, baseline) {
     .map((r) => r.id)
   const metricRegress = []
   for (const [k, v] of Object.entries(current.metrics || {})) {
+    if (BUDGET_METRICS.has(k)) continue // 예산형: ceiling(scorer)이 진짜 게이트 — 래칫에서 제외
     const bv = baseline.metrics?.[k]
     if (typeof bv === 'number' && v > bv) metricRegress.push({ id: k, from: bv, to: v })
   }

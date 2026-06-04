@@ -1,13 +1,12 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, passthrough } from 'msw'
 import type { z } from 'zod'
 import { API_BASE_URL } from '../config'
 import { db } from './db'
-import { signMockJwt, subFromToken } from './jwt'
+import { subFromToken } from './jwt'
 import { categorySchema } from '../schemas/category.schema'
 import { commentSchema } from '../schemas/comment.schema'
-import { postSchema } from '../schemas/post.schema'
 import { menuSchema } from '../schemas/menu.schema'
-import type { CommentInput, LoginPayload, RegisterPayload, User } from '../types'
+import type { CommentInput, User } from '../types'
 
 const BASE = API_BASE_URL.replace(/\/$/, '')
 const url = (path: string) => `${BASE}${path}`
@@ -45,35 +44,12 @@ async function readJson(request: Request): Promise<unknown> {
 const canModify = (user: User, ownerId: string) => user.id === ownerId || user.role === 'admin'
 
 export const handlers = [
-  // ----- auth -----
-  http.post(url('/auth/login'), async ({ request }) => {
-    await delay()
-    const { username, password } = ((await readJson(request)) ?? {}) as Partial<LoginPayload>
-    const user = username ? db.findUserByUsername(username) : null
-    if (!user || !db.checkPassword(username ?? '', password ?? '')) {
-      return HttpResponse.json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' }, { status: 401 })
-    }
-    return HttpResponse.json({ token: signMockJwt(user), user })
-  }),
-
-  http.post(url('/auth/register'), async ({ request }) => {
-    await delay()
-    const { username, email, password } = ((await readJson(request)) ?? {}) as Partial<RegisterPayload>
-    if (!username || !email || !password) {
-      return HttpResponse.json({ message: '필수 항목이 누락되었습니다.' }, { status: 400 })
-    }
-    if (db.findUserByUsername(username)) {
-      return HttpResponse.json({ message: '이미 사용 중인 아이디입니다.' }, { status: 409 })
-    }
-    const user = db.createUser({ username, email }, password)
-    return HttpResponse.json({ token: signMockJwt(user), user }, { status: 201 })
-  }),
-
-  http.get(url('/auth/me'), ({ request }) => {
-    const user = currentUser(request)
-    if (!user) return HttpResponse.json({ message: '인증이 필요합니다.' }, { status: 401 })
-    return HttpResponse.json(user)
-  }),
+  // ----- auth (실서버 위임) -----
+  // 하이브리드 연동: 인증은 실제 백엔드(testBoot)가 처리한다. MSW 는 가로채지 않고
+  // Vite 프록시를 통해 그대로 통과시킨다(passthrough).
+  http.post(url('/auth/login'), () => passthrough()),
+  http.post(url('/auth/register'), () => passthrough()),
+  http.get(url('/auth/me'), () => passthrough()),
 
   // ----- users (공개 프로필 + 통계) -----
   http.get(url('/users/:id'), async ({ params }) => {
@@ -183,73 +159,21 @@ export const handlers = [
     }
   }),
 
-  // ----- posts -----
-  http.get(url('/posts'), async ({ request }) => {
-    await delay()
-    const u = new URL(request.url)
-    return HttpResponse.json(
-      db.listPosts({
-        page: Number(u.searchParams.get('page') ?? '1') || 1,
-        pageSize: Number(u.searchParams.get('pageSize') ?? '10') || 10,
-        search: u.searchParams.get('search') ?? '',
-        categoryId: u.searchParams.get('categoryId') ?? undefined,
-      }),
-    )
-  }),
-
-  http.get(url('/posts/:id'), async ({ params }) => {
-    await delay()
-    const post = db.getPost(String(params.id))
-    if (!post) return HttpResponse.json({ message: '게시글을 찾을 수 없습니다.' }, { status: 404 })
-    return HttpResponse.json(post)
-  }),
-
-  http.post(url('/posts'), async ({ request }) => {
-    await delay()
-    const user = currentUser(request)
-    if (!user) return unauthorized()
-    const parsed = postSchema.safeParse(await readJson(request))
-    if (!parsed.success) return badRequest(parsed.error)
-    try {
-      return HttpResponse.json(db.createPost(parsed.data, user), { status: 201 })
-    } catch (e) {
-      return HttpResponse.json({ message: (e as Error).message }, { status: 400 })
-    }
-  }),
-
-  http.put(url('/posts/:id'), async ({ request, params }) => {
-    await delay()
-    const user = currentUser(request)
-    if (!user) return unauthorized()
-    const post = db.getPost(String(params.id))
-    if (!post) return HttpResponse.json({ message: '게시글을 찾을 수 없습니다.' }, { status: 404 })
-    if (!canModify(user, post.authorId)) return forbidden('수정 권한이 없습니다.')
-    const parsed = postSchema.safeParse(await readJson(request))
-    if (!parsed.success) return badRequest(parsed.error)
-    try {
-      return HttpResponse.json(db.updatePost(post.id, parsed.data))
-    } catch (e) {
-      return HttpResponse.json({ message: (e as Error).message }, { status: 400 })
-    }
-  }),
-
-  http.delete(url('/posts/:id'), async ({ request, params }) => {
-    await delay()
-    const user = currentUser(request)
-    if (!user) return unauthorized()
-    const post = db.getPost(String(params.id))
-    if (!post) return HttpResponse.json({ message: '게시글을 찾을 수 없습니다.' }, { status: 404 })
-    if (!canModify(user, post.authorId)) return forbidden('삭제 권한이 없습니다.')
-    db.deletePost(post.id)
-    return new HttpResponse(null, { status: 204 })
-  }),
+  // ----- posts (실서버 위임) -----
+  // 게시글 CRUD/목록은 실제 백엔드가 처리한다(passthrough).
+  // '/posts/:id/comments' 는 세그먼트 수가 달라 아래 댓글 핸들러가 계속 가로챈다(댓글은 목 유지).
+  http.get(url('/posts'), () => passthrough()),
+  http.post(url('/posts'), () => passthrough()),
+  http.get(url('/posts/:id'), () => passthrough()),
+  http.put(url('/posts/:id'), () => passthrough()),
+  http.delete(url('/posts/:id'), () => passthrough()),
 
   // ----- comments -----
   http.get(url('/posts/:id/comments'), async ({ params }) => {
     await delay()
-    const post = db.getPost(String(params.id))
-    if (!post) return HttpResponse.json({ message: '게시글을 찾을 수 없습니다.' }, { status: 404 })
-    return HttpResponse.json(db.listComments(post.id))
+    // 하이브리드: 게시글은 실서버에 있으므로 목 DB 존재 검사를 생략한다.
+    // 해당 글의 (목)댓글이 없으면 빈 배열을 반환해 상세 페이지가 깨지지 않게 한다.
+    return HttpResponse.json(db.listComments(String(params.id)))
   }),
 
   http.post(url('/posts/:id/comments'), async ({ request, params }) => {
