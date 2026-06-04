@@ -29,10 +29,10 @@ npm run test:watch  # 워치 모드 (개발)
 
 ## E2E 테스트 (Playwright)
 
-- 위치: `e2e/*.spec.ts`. dev 서버(더미/MSW 모드)는 `playwright.config.ts` 의 `webServer` 가 자동 기동.
-- 테스트마다 새 브라우저 컨텍스트(빈 localStorage) → `src/mocks/db.ts` 가 새로 시드되어 **결정적**.
-- 접근성 우선 셀렉터(`getByRole`/`getByLabel`)와 자동 재시도(`expect`)로 견고하게 작성한다.
-- 커버: 카테고리 필터, 댓글 작성, 유저 모달, 관리자 권한 라우팅 (`e2e/features.spec.ts`).
+- 위치: `e2e/*.spec.ts`. `playwright.config.ts` 의 `webServer` 가 `npm run dev` 를 자동 기동하며, 앱은 Vite 프록시를 통해 **실제 백엔드**로 요청한다.
+- 공유 백엔드를 오염시키지 않도록 **읽기·로그인 위주**로 작성한다(글/댓글 생성 같은 쓰기 시나리오는 제외).
+- 접근성 우선 셀렉터(`getByRole`/`getByLabel`)와 자동 재시도(`expect`)로 견고하게 작성한다. 실서버 응답 지연(refetch) 구간은 단언 자동 대기로 흡수한다.
+- 커버: 게시판 목록/상세·카테고리 필터(`e2e/board.spec.ts`), 로그인 성공·실패(`e2e/auth.spec.ts`).
 
 ```bash
 npm run test:e2e    # chromium e2e (브라우저 미설치 시: npx playwright install chromium)
@@ -40,8 +40,8 @@ npm run test:e2e    # chromium e2e (브라우저 미설치 시: npx playwright i
 
 ## 강제 지점
 
-- **CI** (`.github/workflows/harness.yml`): `gate` 잡(lint→test→build→eval→baseline) + `e2e` 잡(Playwright) 병렬.
+- **CI** (`.github/workflows/harness.yml`): `gate` 잡(lint→test→build→eval→baseline). (E2E 는 실서버 의존이라 CI 에선 제외 — 로컬 `npm run test:e2e` 로 실행)
 - **pre-push 훅** (`.githooks/pre-push`): vitest → build → eval → baseline → codex 교차리뷰.
 - **단일 명령**: `npm run harness` (lint + test + build + eval + baseline 가드).
 
-자세한 API 계약은 [api-and-mock.md](./api-and-mock.md), 하네스 상세는 [../harness/README.md](../harness/README.md) 참고.
+자세한 API 계약은 [api.md](./api.md), 하네스 상세는 [../harness/README.md](../harness/README.md) 참고.

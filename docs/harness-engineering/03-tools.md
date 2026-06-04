@@ -41,8 +41,8 @@
 ```
 # 좋은 예: 검색 결과
 3건 일치 (총 120줄 중 상위 3건):
-  src/api/client.ts:14  baseURL 설정
-  src/config.ts:7       IS_MOCK 토글
+  src/api/client.ts:6   baseURL 설정
+  src/config.ts:2       API_BASE_URL 정의
   ...
 ```
 

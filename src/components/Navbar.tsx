@@ -6,7 +6,6 @@ import { useAuthStore } from '../store/authStore'
 import { useMenusQuery } from '../hooks/useMenus'
 import { canAccess } from '../utils/menuAccess'
 import { menuIcons } from './menuIcons'
-import { IS_MOCK } from '../config'
 import type { MenuItem } from '../types'
 import styles from './Navbar.module.css'
 
@@ -37,7 +36,6 @@ export default function Navbar() {
         <Link to="/posts" className={styles.brand}>
           testRep 게시판
         </Link>
-        {IS_MOCK && <span className={styles.badge}>DUMMY</span>}
 
         <nav className={styles.nav}>
           {visibleMenus?.map((m) => {

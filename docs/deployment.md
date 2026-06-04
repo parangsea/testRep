@@ -13,4 +13,4 @@ npm run build         # dist/ 생성
 - gzip 압축
 - `/api` 백엔드 프록시 예시 (주석)
 
-> 실제 백엔드로 전환하는 방법은 [api-and-mock.md](./api-and-mock.md) 를 참고하세요.
+> API 연동(프록시) 구성은 [api.md](./api.md) 를 참고하세요.

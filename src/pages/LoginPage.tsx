@@ -6,7 +6,6 @@ import { toast } from 'react-toastify'
 import { loginSchema, type LoginFormValues } from '../schemas/auth.schema'
 import { useLogin } from '../hooks/useAuth'
 import { getErrorMessage } from '../utils/error'
-import { IS_MOCK } from '../config'
 import styles from './AuthPage.module.css'
 
 interface LocationState {
@@ -44,12 +43,6 @@ export default function LoginPage() {
         <title>로그인 | testRep 게시판</title>
       </Helmet>
       <h1 className={styles.title}>로그인</h1>
-
-      {IS_MOCK && (
-        <p className={styles.hint}>
-          더미 계정 — 아이디 <b>admin</b> / 비밀번호 <b>admin1234</b>
-        </p>
-      )}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="field">

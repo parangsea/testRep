@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { jwtDecode } from 'jwt-decode'
-import { resolveRole } from '../utils/role'
 import type { Role, User } from '../types'
 
 const TOKEN_KEY = 'auth_token'
@@ -23,7 +22,7 @@ function userFromToken(token: string): User | null {
       id: payload.sub,
       username: payload.username,
       email: payload.email,
-      role: resolveRole(payload.username, payload.role), // 토큰에 role 없으면 username 으로 추정(하이브리드)
+      role: payload.role === 'admin' ? 'admin' : 'user', // 토큰에 없으면 안전하게 일반 유저로 강등
       createdAt: '',
     }
   } catch {

@@ -1,17 +1,18 @@
 # testRep
 
-React + TypeScript + Vite 기반 게시판/로그인 데모. 백엔드 API 가 아직 없으므로 **MSW(Mock Service Worker)** 로
-더미 데이터를 제공하며, 환경변수 한 줄로 실제 백엔드로 전환할 수 있도록 설계되어 있습니다.
+React + TypeScript + Vite 기반 게시판/로그인 데모. 실제 백엔드(Spring Boot `testBoot`)와 연동되며,
+모든 `/api` 요청은 Vite 개발 프록시를 통해 백엔드로 전달됩니다.
 
 ## 빠른 시작
 
 ```bash
 npm install
-npm run msw:init      # public/mockServiceWorker.js 생성 (최초 1회)
 npm run dev           # http://localhost:5173
 ```
 
-> 더미 로그인 계정 — 아이디 `admin` / 비밀번호 `admin1234`
+`.env` 에서 백엔드 프록시 대상(`VITE_PROXY_TARGET`)을 설정합니다. (자세한 내용은 [API 연동](./docs/api.md) 참고)
+
+> 테스트 계정 — 아이디 `admin` / 비밀번호 `admin1234`
 
 ## 문서
 
@@ -19,7 +20,7 @@ npm run dev           # http://localhost:5173
 
 - [시작하기](./docs/getting-started.md) — 설치, 실행, 스크립트 목록
 - [아키텍처](./docs/architecture.md) — 기술 스택, 기능, 프로젝트 구조, 번들 최적화
-- [API & 목 전환](./docs/api-and-mock.md) — 더미 → 실제 백엔드 전환, API 엔드포인트 계약
+- [API 연동](./docs/api.md) — 프록시 구성, API 엔드포인트 계약, 권한 모델
 - [배포](./docs/deployment.md) — nginx 배포 가이드
 
 ### 레퍼런스

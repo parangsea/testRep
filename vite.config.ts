@@ -5,17 +5,15 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // .env 의 VITE_PROXY_TARGET 을 읽어 실제 백엔드로 프록시한다.
-  // (vite.config 에서는 import.meta.env 를 못 쓰므로 loadEnv 로 직접 로드한다.)
-  const env = loadEnv(mode, process.cwd(), '')
+  // (vite.config 에서는 import.meta.env 를 못 쓰므로 loadEnv 로 직접 로드한다. envDir='.' = 프로젝트 루트)
+  const env = loadEnv(mode, '.', '')
   const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:8080'
 
   return {
     plugins: [react()],
     server: {
       port: 5173,
-      // 하이브리드 연동: VITE_USE_MOCK=true 라도 MSW 가 passthrough 한 /api 요청
-      // (auth·posts)은 이 프록시를 통해 실제 백엔드로 전달된다.
-      // (더미 도메인은 MSW 가 네트워크 레벨에서 먼저 응답하므로 프록시까지 오지 않는다.)
+      // 모든 /api 요청을 실제 백엔드로 중계한다.
       proxy: {
         '/api': {
           target: proxyTarget,
@@ -51,7 +49,7 @@ export default defineConfig(({ mode }) => {
       setupFiles: './src/test/setup.ts',
       css: true,
       // 유닛/컴포넌트 테스트는 src 안에서만 수집한다.
-      // e2e/ 의 Playwright 스펙은 playwright test 가 따로 실행하므로 제외한다.
+      // (e2e/** 제외는 vitest 가 e2e 경로의 스펙을 끌어오지 않게 하는 회귀 가드 — 유지)
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
       exclude: ['node_modules', 'dist', 'e2e/**'],
     },
